@@ -19,3 +19,7 @@ tests/_out/
 
 # Laminas sueltas volcadas al servir estaticos durante pruebas
 app/web/static/_*.svg
+
+# Memoria privada de Claude: lleva datos personales y el repo es publico.
+# Se copia a mano al otro PC; nunca se versiona.
+_memoria_privada/
