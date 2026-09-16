@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modelador de muros de contención</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">▤</span>
+    <div>
+      <h1>Modelador de muros de contención</h1>
+      <p id="subtitle">Generación paramétrica de modelos SAP2000</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="btn-preview" class="btn btn-primary">Actualizar modelo</button>
+    <button id="btn-s2k" class="btn">Descargar .s2k</button>
+    <button id="btn-excel" class="btn">Memoria Excel</button>
+    <button id="btn-json" class="btn btn-ghost">Guardar datos</button>
+    <span class="divider"></span>
+    <button id="btn-dxf" class="btn btn-dis" disabled>Despiece DXF</button>
+    <button id="btn-pdf" class="btn btn-dis" disabled>Despiece PDF</button>
+    <button id="btn-memoria" class="btn btn-dis" disabled>Memoria Word</button>
+    <label class="btn btn-ghost" for="file-json">Cargar datos</label>
+    <input type="file" id="file-json" accept=".json" hidden>
+    <span class="divider"></span>
+    <button id="btn-panel-izq" class="btn btn-ghost btn-icon"
+            title="Ocultar el panel de entrada (Alt+1)">&#9703;</button>
+    <button id="btn-panel-der" class="btn btn-ghost btn-icon"
+            title="Ocultar el panel de resultados (Alt+2)">&#9704;</button>
+    <button id="btn-panel-ambos" class="btn btn-ghost btn-icon"
+            title="Solo el área de trabajo (Alt+0)">&#9723;</button>
+    <span class="divider"></span>
+    <button id="btn-theme" class="btn btn-ghost" title="Cambiar a tema claro">&#9790; Oscuro</button>
+    <span class="divider"></span>
+    <button id="btn-sap" class="btn btn-sap">Enviar a SAP</button>
+    <button id="btn-sap-run" class="btn btn-sap">Correr y verificar</button>
+  </div>
+</header>
+
+<div id="toast" class="toast hidden"></div>
+
+<main class="layout">
+
+  <!-- ------------------------------------------------ panel de entrada -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-scroll" id="form-root"></div>
+  </aside>
+
+  <!-- --------------------------------------------------- area central -->
+  <section class="workspace">
+
+    <div class="tabs" id="view-tabs">
+      <button class="tab active" data-view="elevacion">Perfil del muro</button>
+      <button class="tab" data-view="modelo">Modelo 3D</button>
+      <button class="tab" data-view="presiones">Diagrama de empujes</button>
+      <button class="tab" data-view="diseno">Fuerzas de diseño</button>
+      <button class="tab" data-view="refuerzo">Refuerzo</button>
+    </div>
+
+    <!-- editor de elevación -->
+    <div class="view active" id="view-elevacion">
+      <div class="view-toolbar">
+        <label class="switch">
+          <input type="checkbox" id="chk-draw">
+          <span>Dibujar perfil libre</span>
+        </label>
+        <span class="hint" id="draw-hint">Modo paramétrico: la corona es horizontal a la cota <b id="hint-ztop">6.00</b> m.</span>
+        <div class="spacer"></div>
+        <button class="btn btn-sm" id="btn-add-pt">Añadir punto</button>
+        <button class="btn btn-sm" id="btn-reset-profile">Reiniciar perfil</button>
+      </div>
+      <canvas id="canvas-elev"></canvas>
+      <div class="legend">
+        <span><i class="sw sw-wall"></i>Pantalla</span>
+        <span><i class="sw sw-beam"></i>Viga cabezal</span>
+        <span><i class="sw sw-pile"></i>Pilas</span>
+        <span><i class="sw sw-soil"></i>Relleno retenido</span>
+        <span class="muted">Arrastre los nodos de la corona. Doble clic añade un punto; clic derecho lo elimina.</span>
+      </div>
+    </div>
+
+    <!-- visor 3D -->
+    <div class="view" id="view-modelo">
+      <div class="view-toolbar">
+        <label class="switch"><input type="checkbox" id="chk-shells" checked><span>Shells</span></label>
+        <label class="switch"><input type="checkbox" id="chk-frames" checked><span>Frames</span></label>
+        <label class="switch"><input type="checkbox" id="chk-springs" checked><span>Resortes</span></label>
+        <label class="switch"><input type="checkbox" id="chk-press"><span>Colorear empuje</span></label>
+        <div class="spacer"></div>
+        <button class="btn btn-sm" id="btn-view-iso">Isométrica</button>
+        <button class="btn btn-sm" id="btn-view-yz">Alzado Y-Z</button>
+        <button class="btn btn-sm" id="btn-view-xz">Perfil X-Z</button>
+      </div>
+      <canvas id="canvas-3d"></canvas>
+      <div class="legend">
+        <span class="muted">Arrastre para orbitar · rueda para acercar · arrastre con botón central para desplazar</span>
+      </div>
+    </div>
+
+    <!-- diagrama de presiones -->
+    <div class="view" id="view-presiones">
+      <div class="view-toolbar">
+        <span class="hint">Distribución de presiones sobre la pantalla en la sección de mayor altura.</span>
+      </div>
+      <canvas id="canvas-press"></canvas>
+      <div class="legend">
+        <span><i class="sw sw-p1"></i>Empuje del relleno</span>
+        <span><i class="sw sw-p2"></i>Sobrecarga</span>
+        <span><i class="sw sw-p3"></i>Incremento sísmico</span>
+        <span><i class="sw sw-p4"></i>Agua</span>
+      </div>
+    </div>
+
+    <!-- fuerzas de diseno -->
+    <div class="view" id="view-diseno">
+      <div class="view-toolbar">
+        <button class="btn btn-sm tab-d active" data-mode="pm">Interacción P-M</button>
+        <button class="btn btn-sm tab-d" data-mode="viga">Envolventes de la viga</button>
+        <button class="btn btn-sm tab-d" data-mode="muro">Mapa del muro</button>
+        <div class="spacer"></div>
+        <label class="switch" id="wrap-muro-comp" hidden>
+          <span>Componente</span>
+          <select id="sel-muro-comp" class="sel-sm">
+            <option value="M22">M22 vertical</option>
+            <option value="M11">M11 horizontal</option>
+            <option value="V">Cortante</option>
+          </select>
+        </label>
+        <span class="hint" id="hint-diseno">Corra y verifique el modelo para ver las solicitaciones.</span>
+      </div>
+      <canvas id="canvas-design"></canvas>
+      <div class="legend" id="legend-diseno">
+        <span class="muted">Las solicitaciones salen de la envolvente de las combinaciones de diseño.</span>
+      </div>
+    </div>
+
+    <!-- refuerzo: dibujo + ajuste -->
+    <div class="view" id="view-refuerzo">
+      <div class="view-toolbar">
+        <button class="btn btn-sm tab-r active" data-vista="conjunto">Corte del conjunto</button>
+        <button class="btn btn-sm tab-r" data-vista="arranque">Arranque</button>
+        <button class="btn btn-sm tab-r" data-vista="viga">Sección de viga</button>
+        <button class="btn btn-sm tab-r" data-vista="alzado">Alzado de viga</button>
+        <button class="btn btn-sm tab-r" data-vista="pila">Sección de pila</button>
+        <button class="btn btn-sm tab-r" data-vista="planta">Planta</button>
+        <button class="btn btn-sm tab-r" data-vista="alzado_muro">Alzado del muro</button>
+        <span class="divider"></span>
+        <button class="btn btn-sm tab-r" data-vista="lamina1"
+                title="Planta de replanteo, alzado del muro y notas generales">L-01</button>
+        <button class="btn btn-sm tab-r" data-vista="lamina2"
+                title="Secciones, detalles y despiece">L-02</button>
+        <button class="btn btn-sm tab-r" data-vista="lamina3" hidden
+                title="Despiece de refuerzo (solo si no cabe en la L-02)">L-03</button>
+        <div class="spacer"></div>
+        <span class="hint" id="hint-refuerzo">Corra y verifique el modelo para ver el refuerzo.</span>
+      </div>
+      <div class="split-ref">
+        <div class="svg-wrap" id="svg-refuerzo">
+          <div class="placeholder">Pulse «Correr y verificar» para calcular el refuerzo.</div>
+        </div>
+        <aside class="edit-panel" id="edit-refuerzo"></aside>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- -------------------------------------------------- panel derecho -->
+  <aside class="results" id="results">
+    <div class="results-scroll" id="results-root">
+      <div class="placeholder">Pulse <b>Actualizar modelo</b> para generar la malla y los empujes.</div>
+    </div>
+  </aside>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

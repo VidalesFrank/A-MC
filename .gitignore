@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+salidas/
+tests/_out_*
+tests/_out/
+
+# Modelos y salidas de SAP: binarios pesados y regenerables
+*.sdb
+*.$2k
+*.K_[0-9IJM]
+*.Y*
+*.OUT
+*.LOG
+*.msh
+*.ico
+
+# Estudio geotecnico del cliente: documento de un tercero, no se publica
+*.pdf
+
+# Laminas sueltas volcadas al servir estaticos durante pruebas
+app/web/static/_*.svg
